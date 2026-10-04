@@ -1,0 +1,8 @@
+trino>=0.320.0
+pyiceberg>=0.7.0
+pyspark>=3.5.0
+spark-sqlalchemy>=1.1.0
+google-cloud-bigquery>=3.15.0
+snowflake-connector-python>=3.9.0
+psycopg2-binary>=2.9.0
+aiosqlite>=0.19.0

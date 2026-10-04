@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: datamind-backend
+  namespace: datamind
+  labels:
+    app: datamind
+    tier: backend
+spec:
+  selector:
+    app: datamind
+    tier: backend
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
+    - name: websocket
+      port: 8001
+      targetPort: 8001
+      protocol: TCP
+  type: ClusterIP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: datamind-frontend
+  namespace: datamind
+  labels:
+    app: datamind
+    tier: frontend
+spec:
+  selector:
+    app: datamind
+    tier: frontend
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: datamind-postgres
+  namespace: datamind
+  labels:
+    app: datamind
+    tier: database
+spec:
+  selector:
+    app: datamind
+    tier: database
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+      protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: datamind-redis
+  namespace: datamind
+  labels:
+    app: datamind
+    tier: cache
+spec:
+  selector:
+    app: datamind
+    tier: cache
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+      protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: datamind-minio
+  namespace: datamind
+  labels:
+    app: datamind
+    tier: storage
+spec:
+  selector:
+    app: datamind
+    tier: storage
+  ports:
+    - name: api
+      port: 9000
+      targetPort: 9000
+      protocol: TCP
+    - name: console
+      port: 9001
+      targetPort: 9001
+      protocol: TCP
+  type: ClusterIP

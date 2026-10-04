@@ -1,0 +1,38 @@
+# Casbin RBAC Policy for DataMind-King with domain-based tenant isolation
+# Format: p, subject, domain (org), object, action
+# Role definition: g, user, role, domain
+
+# Admin policies (org1) - full access
+p, admin, org1, dataset, *
+p, admin, org1, job, *
+p, admin, org1, agent, *
+p, admin, org1, dashboard, *
+p, admin, org1, report, *
+p, admin, org1, bi, *
+
+# Analyst policies (org1) - read and create, no delete
+p, analyst, org1, dataset, read
+p, analyst, org1, dataset, write
+p, analyst, org1, job, read
+p, analyst, org1, job, create
+p, analyst, org1, agent, read
+p, analyst, org1, dashboard, read
+p, analyst, org1, report, read
+p, analyst, org1, report, create
+
+# Viewer policies (org1) - read only
+p, viewer, org1, dataset, read
+p, viewer, org1, job, read
+p, viewer, org1, agent, read
+p, viewer, org1, dashboard, read
+p, viewer, org1, report, read
+
+# Admin policies (org2) - limited access
+p, admin, org2, dataset, read
+p, admin, org2, job, read
+
+# Role assignments (user, role, domain)
+g, user1, admin, org1
+g, user2, analyst, org1
+g, user3, viewer, org1
+g, user4, admin, org2

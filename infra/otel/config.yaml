@@ -1,0 +1,113 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'datamind-backend'
+          static_configs:
+            - targets: ['localhost:8000']
+          metrics_path: /metrics
+
+        - job_name: 'datamind-postgres'
+          static_configs:
+            - targets: ['localhost:9187']
+
+  hostmetrics:
+    collection_interval: 10s
+    scrapers:
+      cpu: {}
+      memory: {}
+      disk: {}
+      network: {}
+      filesystem: {}
+      load: {}
+      paging: {}
+      process: {}
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 1024
+    spike_limit_mib: 256
+
+  attributes:
+    actions:
+      - key: service.namespace
+        value: datamind
+        action: insert
+      - key: deployment.environment
+        value: production
+        action: insert
+
+  resource:
+    attributes:
+      - key: cluster.name
+        value: datamind-cluster
+        action: insert
+
+  transform:
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["db.system"], "postgresql") where attributes["db.system"] == nil
+          - replace_pattern(body, ".*SELECT .* FROM users.*", "SELECT * FROM [REDACTED_TABLE]")
+
+connectors:
+  spanmetrics:
+    dimensions:
+      - name: service.name
+      - name: span.kind
+      - name: db.system
+
+exporters:
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    send_timestamps: true
+    metric_expiration: 30m
+
+  prometheusremotewrite:
+    endpoint: http://prometheus:9090/api/v1/write
+    tls:
+      insecure: true
+
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+  logging:
+    loglevel: info
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp/tempo, spanmetrics]
+
+    metrics:
+      receivers: [otlp, prometheus, hostmetrics, spanmetrics]
+      processors: [memory_limiter, attributes, resource, transform, batch]
+      exporters: [prometheus, prometheusremotewrite, logging]
+
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [logging]

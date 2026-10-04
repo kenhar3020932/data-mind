@@ -1,0 +1,41 @@
+default:
+  datasources:
+    - name: Prometheus
+      type: prometheus
+      access: proxy
+      url: http://prometheus:9090
+      isDefault: true
+      editable: false
+      jsonData:
+        timeInterval: "15s"
+        httpMethod: POST
+        exemplarTraceIdDestinations:
+          - name: traceID
+            datasourceUid: tempo
+    - name: Loki
+      type: loki
+      access: proxy
+      url: http://loki:3100
+      editable: false
+      jsonData:
+        maxLines: 1000
+    - name: Tempo
+      type: tempo
+      access: proxy
+      url: http://tempo:3200
+      editable: false
+      jsonData:
+        tracesToLogs:
+          datasourceUid: loki
+        serviceMap:
+          datasourceUid: prometheus
+
+dashboards:
+  - name: default
+    orgId: 1
+    folder: ""
+    type: file
+    credentials: {}
+    json_data:
+      path: /etc/grafana/provisioning/dashboards
+    access: proxy

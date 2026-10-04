@@ -1,0 +1,55 @@
+/* RTL Support for Urdu and other right-to-left languages */
+[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="rtl"] .text-left {
+  text-align: right;
+}
+
+[dir="rtl"] .text-right {
+  text-align: left;
+}
+
+[dir="rtl"] .ml-2 {
+  margin-left: 0;
+  margin-right: 0.5rem;
+}
+
+[dir="rtl"] .mr-2 {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+[dir="rtl"] .pl-4 {
+  padding-left: 0;
+  padding-right: 1rem;
+}
+
+[dir="rtl"] .pr-4 {
+  padding-right: 0;
+  padding-left: 1rem;
+}
+
+/* Flip icons for RTL */
+[dir="rtl"] .flip-rtl {
+  transform: scaleX(-1);
+}
+
+/* Logical properties for spacing */
+[dir="rtl"] .ps-4 {
+  padding-inline-start: 1rem;
+}
+
+[dir="rtl"] .pe-4 {
+  padding-inline-end: 1rem;
+}
+
+[dir="rtl"] .ms-2 {
+  margin-inline-start: 0.5rem;
+}
+
+[dir="rtl"] .me-2 {
+  margin-inline-end: 0.5rem;
+}

@@ -1,0 +1,159 @@
+name: Security - Advanced Threat Detection
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM
+  workflow_dispatch:
+
+jobs:
+  secret-scanning:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --only-verified
+
+  dependency-audit:
+    name: Dependency Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install safety setuptools-scm
+
+      - name: Check Python dependencies
+        run: safety check -r backend/requirements/base.txt -r backend/requirements/dev.txt --json > safety-report.json || true
+
+      - name: Upload safety report
+        uses: actions/upload-artifact@v4
+        with:
+          name: safety-report
+          path: safety-report.json
+
+      - name: Check JavaScript dependencies
+        run: |
+          cd frontend
+          npm audit --production --audit-level=high || true
+          npm audit --json > npm-audit-report.json || true
+
+      - name: Upload npm audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-report
+          path: frontend/npm-audit-report.json
+
+  container-scanning:
+    name: Container Vulnerability Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t datamind-backend:scan -f backend/Dockerfile .
+
+      - name: Run Trivy scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'datamind-backend:scan'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+      - name: Build frontend image
+        run: docker build -t datamind-frontend:scan -f frontend/Dockerfile .
+
+      - name: Run Trivy scan on frontend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'datamind-frontend:scan'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+  sast:
+    name: Static Application Security Testing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: 'p/default'
+          fail-on-severity: high
+          args: '--metrics=off'
+
+      - name: Run Bandit
+        run: |
+          pip install bandit
+          bandit -r backend/app -ll -iii -f json -o bandit-report.json
+          bandit -r backend/app -ll -iii
+
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit-report.json
+
+  iam-review:
+    name: IAM and Permissions Review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Kubernetes RBAC
+        run: |
+          if [ -f "infra/k8s/secret.yaml" ]; then
+            kubectl apply --dry-run=client -f infra/k8s/secret.yaml 2>/dev/null || echo "kubectl not available, skipping"
+          fi
+
+      - name: Validate Docker security
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock securego/dockerscan
+
+  compliance:
+    name: Compliance Checking
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for hardcoded secrets
+        run: |
+          grep -r "password\s*=\s*['\"]" backend/app --include="*.py" || true
+          grep -r "api_key\s*=\s*['\"]" backend/app --include="*.py" || true
+          grep -r "secret\s*=\s*['\"]" backend/app --include="*.py" || true
+
+      - name: Verify .env files
+        run: |
+          if [ -f ".env" ]; then
+            echo "⚠️ Warning: .env file detected in repository"
+            echo "Ensure it contains only dummy values"
+          fi
+
+      - name: Check license compliance
+        run: |
+          pip install pip-licenses
+          pip-licenses --format=json > licenses.json
+          cat licenses.json

@@ -1,0 +1,88 @@
+version: "3.9"
+
+services:
+  spark-master:
+    image: bitnami/spark:3.5
+    container_name: datamind-spark-master
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=4G
+      - SPARK_WORKER_CORES=2
+    volumes:
+      - spark_master_data:/opt/spark/work-dir
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "spark-submit", "--version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  spark-worker:
+    image: bitnami/spark:3.5
+    container_name: datamind-spark-worker
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=4G
+      - SPARK_WORKER_CORES=2
+    volumes:
+      - spark_worker_data:/opt/spark/work-dir
+    networks:
+      - internal
+    restart: unless-stopped
+
+  trino:
+    image: trinodb/trino:414
+    container_name: datamind-trino
+    ports:
+      - "8080:8080"
+    environment:
+      - TRINO_JVM_OPTIONS=-Xmx4G
+      - TRINO_HTTP_PORT=8080
+      - TRINO_NODE_ID=trino
+    volumes:
+      - trino_config:/etc/trino
+      - trino_data:/var/trino/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/info"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  iceberg-rest:
+    image:tabulario/iceberg-rest:latest
+    container_name: datamind-iceberg-rest
+    ports:
+      - "8181:8181"
+    environment:
+      - CATALOG WareHOUSE=filesystem
+      - CATALOG WareHOUSE=/home/iceberg/warehouse
+      - JWT_ALGO=HS256
+      - JWT_SECRET=changeme
+    volumes:
+      - iceberg_data:/home/iceberg
+    networks:
+      - internal
+    restart: unless-stopped
+
+volumes:
+  spark_master_data:
+  spark_worker_data:
+  trino_config:
+  trino_data:
+  iceberg_data:
+
+networks:
+  internal:
+    driver: bridge

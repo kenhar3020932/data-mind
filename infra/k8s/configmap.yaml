@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: datamind-config
+  namespace: datamind
+  labels:
+    app: datamind
+data:
+  APP_NAME: "DataMind-King"
+  APP_ENV: "production"
+  DEBUG: "false"
+  LOG_LEVEL: "info"
+  CORS_ORIGINS: "https://datamind.example.com"
+  MAX_UPLOAD_SIZE: "1073741824"
+  SQL_GATE_MAX_LENGTH: "5000"
+  ENGINE_DUCKDB_MAX_GB: "10"
+  ENGINE_CLICKHOUSE_MAX_GB: "1000"
